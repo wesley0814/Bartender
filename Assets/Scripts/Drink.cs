@@ -1,78 +1,121 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class Drink : MonoBehaviour
 {
-    [SerializeField] private Button drinkButton;
+    [Header("UI Elements")]
+    [SerializeField] private Transform commandDisplayParent;
 
-    private List<KeyCode> commandSequence = new List<KeyCode> {
-        KeyCode.A, KeyCode.S, KeyCode.D, KeyCode.W, KeyCode.W, KeyCode.D
-    };
+    [Header("Key Sprites")]
+    [SerializeField] private Sprite spriteW;
+    [SerializeField] private Sprite spriteA;
+    [SerializeField] private Sprite spriteS;
+    [SerializeField] private Sprite spriteD;
 
+    [Header("Drink Manager")]
+    [SerializeField] private DrinkManager drinkManager;
+
+    [System.Serializable]
+    public class CommandButtonBinding
+    {
+        public Button button;
+        public string commandName;
+    }
+
+    [SerializeField] private List<CommandButtonBinding> commandButtons;
+
+    private DrinkData currentDrink;
     private List<KeyCode> currentInput = new List<KeyCode>();
-
     private bool isListening = false;
 
     void Start()
     {
-        // 버튼에 함수 연결
-        if (drinkButton != null)
+        // 버튼에 커맨드 이름 바인딩
+        foreach (var binding in commandButtons)
         {
-            drinkButton.onClick.AddListener(StartListening);
+            var captured = binding;
+            if (captured.button != null)
+            {
+                captured.button.onClick.AddListener(() =>
+                {
+                    StartListening(captured.commandName);
+                });
+            }
         }
     }
 
     void Update()
     {
-        InputCommand();
-    }
-
-    public void InputCommand()
-    {
-        if (!isListening) return;
+        if (!isListening || currentDrink == null) return;
 
         if (Input.anyKeyDown)
         {
+            if (Input.GetKeyDown(KeyCode.W)) AddInput(KeyCode.W);
             if (Input.GetKeyDown(KeyCode.A)) AddInput(KeyCode.A);
             if (Input.GetKeyDown(KeyCode.S)) AddInput(KeyCode.S);
             if (Input.GetKeyDown(KeyCode.D)) AddInput(KeyCode.D);
-            if (Input.GetKeyDown(KeyCode.W)) AddInput(KeyCode.W);
         }
     }
 
-    public void StartListening()
+    public void StartListening(string commandName)
     {
-        Debug.Log("커맨드 입력 시작!");
+        Debug.Log($"커맨드 입력 시작: {commandName}");
+
+        currentDrink = drinkManager.GetDrinkByName(commandName);
+        if (currentDrink == null)
+        {
+            Debug.LogWarning("해당 커맨드가 없습니다.");
+            return;
+        }
+
         isListening = true;
         currentInput.Clear();
+
+        // 기존 UI 클리어
+        foreach (Transform child in commandDisplayParent)
+        {
+            Destroy(child.gameObject);
+        }
+
+        int index = 0;
+        foreach (KeyCode key in currentDrink.sequence)
+        {
+            GameObject go = new GameObject("Command_" + key);
+            go.transform.SetParent(commandDisplayParent, false);
+
+            Image img = go.AddComponent<Image>();
+            img.sprite = GetSpriteForKey(key);
+
+            RectTransform rt = go.GetComponent<RectTransform>();
+            rt.sizeDelta = new Vector2(100, 100);
+            rt.anchoredPosition = new Vector2(100 * index, 0); // ? 다시 오른쪽으로 100씩 이동
+
+            index++;
+        }
+
+
     }
+
 
     private void AddInput(KeyCode key)
     {
-        // 다음 입력이 시퀀스의 해당 위치와 일치하는지 확인
-        int nextIndex = currentInput.Count;
+        int index = currentInput.Count;
 
-        // 입력 초과 방지
-        if (nextIndex >= commandSequence.Count)
+        if (index >= currentDrink.sequence.Count)
         {
             ResetCommand();
             return;
         }
 
-        if (key == commandSequence[nextIndex])
+        if (key == currentDrink.sequence[index])
         {
             currentInput.Add(key);
+            Debug.Log("현재 입력: " + string.Join(" ", currentInput));
 
-            // 현재 입력 출력
-            string inputSoFar = string.Join(" ", currentInput);
-            Debug.Log("현재 입력: " + inputSoFar);
-
-            // 성공 판정
-            if (currentInput.Count == commandSequence.Count)
+            if (currentInput.Count == currentDrink.sequence.Count)
             {
-                Debug.Log("커맨드 성공!");
+                Debug.Log($"커맨드 성공: {currentDrink.drinkName}");
                 ResetCommand();
             }
         }
@@ -85,6 +128,26 @@ public class Drink : MonoBehaviour
 
     private void ResetCommand()
     {
+        isListening = false;
         currentInput.Clear();
+        currentDrink = null;
+
+        // UI 초기화
+        foreach (Transform child in commandDisplayParent)
+        {
+            Destroy(child.gameObject);
+        }
+    }
+
+    private Sprite GetSpriteForKey(KeyCode key)
+    {
+        switch (key)
+        {
+            case KeyCode.W: return spriteW;
+            case KeyCode.A: return spriteA;
+            case KeyCode.S: return spriteS;
+            case KeyCode.D: return spriteD;
+            default: return null;
+        }
     }
 }
