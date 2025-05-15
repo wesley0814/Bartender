@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+ï»¿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -25,13 +25,15 @@ public class Drink : MonoBehaviour
 
     [SerializeField] private List<CommandButtonBinding> commandButtons;
 
+    [SerializeField] private Text earningsText;
+
     private DrinkData currentDrink;
     private List<KeyCode> currentInput = new List<KeyCode>();
     private bool isListening = false;
+    private float totalEarnings = 0f;
 
     void Start()
     {
-        // ¹öÆ°¿¡ Ä¿¸Çµå ÀÌ¸§ ¹ÙÀÎµù
         foreach (var binding in commandButtons)
         {
             var captured = binding;
@@ -60,19 +62,18 @@ public class Drink : MonoBehaviour
 
     public void StartListening(string commandName)
     {
-        Debug.Log($"Ä¿¸Çµå ÀÔ·Â ½ÃÀÛ: {commandName}");
+        Debug.Log($"ì»¤ë§¨ë“œ ì…ë ¥ ì‹œì‘: {commandName}");
 
         currentDrink = drinkManager.GetDrinkByName(commandName);
         if (currentDrink == null)
         {
-            Debug.LogWarning("ÇØ´ç Ä¿¸Çµå°¡ ¾ø½À´Ï´Ù.");
+            Debug.LogWarning("í•´ë‹¹ ì»¤ë§¨ë“œê°€ ì—†ìŠµë‹ˆë‹¤.");
             return;
         }
 
         isListening = true;
         currentInput.Clear();
 
-        // ±âÁ¸ UI Å¬¸®¾î
         foreach (Transform child in commandDisplayParent)
         {
             Destroy(child.gameObject);
@@ -89,7 +90,7 @@ public class Drink : MonoBehaviour
 
             RectTransform rt = go.GetComponent<RectTransform>();
             rt.sizeDelta = new Vector2(100, 100);
-            rt.anchoredPosition = new Vector2(100 * index, 0); // ? ´Ù½Ã ¿À¸¥ÂÊÀ¸·Î 100¾¿ ÀÌµ¿
+            rt.anchoredPosition = new Vector2(100 * index, 0);
 
             index++;
         }
@@ -111,17 +112,19 @@ public class Drink : MonoBehaviour
         if (key == currentDrink.sequence[index])
         {
             currentInput.Add(key);
-            Debug.Log("ÇöÀç ÀÔ·Â: " + string.Join(" ", currentInput));
+            Debug.Log("í˜„ì¬ ì…ë ¥: " + string.Join(" ", currentInput));
 
             if (currentInput.Count == currentDrink.sequence.Count)
             {
-                Debug.Log($"Ä¿¸Çµå ¼º°ø: {currentDrink.drinkName}");
+                totalEarnings += currentDrink.drinkPrice;
+                Debug.Log($"ì»¤ë§¨ë“œ ì„±ê³µ: {currentDrink.drinkName} (+{Mathf.FloorToInt(totalEarnings)}ì›)");
+                UpdateUI();
                 ResetCommand();
             }
         }
         else
         {
-            Debug.Log("Àß¸øµÈ ÀÔ·Â. ÃÊ±âÈ­.");
+            Debug.Log("ì˜ëª»ëœ ì…ë ¥. ì´ˆê¸°í™”.");
             ResetCommand();
         }
     }
@@ -132,7 +135,6 @@ public class Drink : MonoBehaviour
         currentInput.Clear();
         currentDrink = null;
 
-        // UI ÃÊ±âÈ­
         foreach (Transform child in commandDisplayParent)
         {
             Destroy(child.gameObject);
@@ -149,5 +151,9 @@ public class Drink : MonoBehaviour
             case KeyCode.D: return spriteD;
             default: return null;
         }
+    }
+    private void UpdateUI()
+    {
+        earningsText.text = $"ğŸ’° {Mathf.FloorToInt(totalEarnings)} ì›";
     }
 }

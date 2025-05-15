@@ -1,0 +1,71 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Unity\\Bartender\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{40970905-BA32-B701-7685-5B0BE514600A}|Assembly-CSharp.csproj|c:\\unity\\bartender\\assets\\scripts\\drink.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{40970905-BA32-B701-7685-5B0BE514600A}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\drink.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{40970905-BA32-B701-7685-5B0BE514600A}|Assembly-CSharp.csproj|c:\\unity\\bartender\\assets\\scripts\\drinkmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{40970905-BA32-B701-7685-5B0BE514600A}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\drinkmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{40970905-BA32-B701-7685-5B0BE514600A}|Assembly-CSharp.csproj|c:\\unity\\bartender\\assets\\scripts\\drinkdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{40970905-BA32-B701-7685-5B0BE514600A}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\drinkdata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Drink.cs",
+              "DocumentMoniker": "C:\\Unity\\Bartender\\Assets\\Scripts\\Drink.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Drink.cs",
+              "ToolTip": "C:\\Unity\\Bartender\\Assets\\Scripts\\Drink.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Drink.cs",
+              "ViewState": "AgIAADYAAAAAAAAAAAAcwFAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-12T06:24:42.063Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "DrinkManager.cs",
+              "DocumentMoniker": "C:\\Unity\\Bartender\\Assets\\Scripts\\DrinkManager.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\DrinkManager.cs",
+              "ToolTip": "C:\\Unity\\Bartender\\Assets\\Scripts\\DrinkManager.cs",
+              "RelativeToolTip": "Assets\\Scripts\\DrinkManager.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAB9AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-12T06:24:30.945Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "DrinkData.cs",
+              "DocumentMoniker": "C:\\Unity\\Bartender\\Assets\\Scripts\\DrinkData.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\DrinkData.cs",
+              "ToolTip": "C:\\Unity\\Bartender\\Assets\\Scripts\\DrinkData.cs",
+              "RelativeToolTip": "Assets\\Scripts\\DrinkData.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAA6AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-12T06:24:04.486Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
