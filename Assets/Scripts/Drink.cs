@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -19,19 +20,12 @@ public class Drink : MonoBehaviour
     [SerializeField] private Sprite spriteS;
     [SerializeField] private Sprite spriteD;
     [SerializeField] private Sprite speechBubbleSprite;
+    [SerializeField] private List<GameObject> drinkSelectionList;
+    [SerializeField] private Sprite indicatorSprite;
 
     [Header("Managers")]
     [SerializeField] private DrinkManager drinkManager;
     [SerializeField] private CustomerManager customerManager;
-
-    [System.Serializable]
-    public class CommandButtonBinding
-    {
-        public Button button;
-        public string commandName;
-    }
-
-    [SerializeField] private List<CommandButtonBinding> commandButtons;
 
     // Make drink and put in queue
     public class DrinkQueue
@@ -63,41 +57,109 @@ public class Drink : MonoBehaviour
     private DrinkData currentDrink;
     private List<KeyCode> currentInput = new List<KeyCode>();
     private List<GameObject> commandUIObjects = new List<GameObject>();
+    private List<GameObject> indicators = new List<GameObject>();
     private bool isListening = false;
+    private bool isSelecting = false;
     private float totalEarnings = 0f;
+    private int currentSelectionIndex = 0;
+    private IEnumerator selectDrink;
+
 
     void Start()
     {
-        foreach (var binding in commandButtons)
-        {
-            var captured = binding;
-            if (captured.button != null)
-            {
-                captured.button.onClick.AddListener(() =>
-                {
-                    StartListening(captured.commandName);
-                });
-            }
-        }
+        
     }
 
     void Update()
     {
-        if (!isListening || currentDrink == null)
-        {
-            CheckServeInput();
-            return;
-        }
-
         if (Input.anyKeyDown)
         {
+            if (Input.GetKeyDown(KeyCode.Q))
+            {
+                if (!isListening && !isSelecting)
+                {
+                    selectDrink = AutoSelectDrink();
+                    StartCoroutine(selectDrink);
+                }
+                else if (isSelecting)
+                {
+                    StopCoroutine(selectDrink);
+                    ConfirmSelection();
+                }
+            }
             if (Input.GetKeyDown(KeyCode.W)) AddInput(KeyCode.W);
             if (Input.GetKeyDown(KeyCode.A)) AddInput(KeyCode.A);
             if (Input.GetKeyDown(KeyCode.S)) AddInput(KeyCode.S);
             if (Input.GetKeyDown(KeyCode.D)) AddInput(KeyCode.D);
+            
         }
+        if (!isListening && !isSelecting)
+        {
+            CheckServeInput();
+        }
+    }
 
-        CheckServeInput();
+    IEnumerator AutoSelectDrink()
+    {
+        isSelecting = true;
+        currentSelectionIndex = 0;
+
+        HighlightDrink(currentSelectionIndex); // 초기 하이라이트
+
+        while(true)
+        {
+            yield return new WaitForSeconds(0.25f);
+            currentSelectionIndex = (currentSelectionIndex + 1) % drinkSelectionList.Count;
+            HighlightDrink(currentSelectionIndex); // 갱신된 하이라이트
+        }
+    }
+
+
+    private void ConfirmSelection()
+    {
+        GameObject selectedDrink = drinkSelectionList[currentSelectionIndex];
+        string drinkName = selectedDrink.name;
+
+        foreach (var indicator in indicators)
+        {
+            if (indicator != null)
+                Destroy(indicator);
+        }
+        indicators.Clear();
+
+        StartListening(drinkName);
+
+        isSelecting = false;
+    }
+
+    private void HighlightDrink(int index)
+    {
+        // 기존 인디케이터 제거
+        foreach (var indicator in indicators)
+        {
+            if (indicator != null)
+                Destroy(indicator);
+        }
+        indicators.Clear();
+
+        for (int i = 0; i < drinkSelectionList.Count; i++)
+        {
+            if (i == index && indicatorSprite != null)
+            {
+                GameObject indicator = new GameObject("Indicator");
+                indicator.transform.SetParent(drinkSelectionList[i].transform, false);
+
+                Image img = indicator.AddComponent<Image>();
+                img.sprite = indicatorSprite;
+
+                RectTransform rt = indicator.GetComponent<RectTransform>();
+                rt.sizeDelta = new Vector2(30, 30); // 원하는 크기로 조절
+                rt.anchoredPosition = new Vector2(0, 40); // 음료 위로 띄우기
+                rt.SetAsLastSibling();
+
+                indicators.Add(indicator);
+            }
+        }
     }
 
     private void CheckServeInput()
@@ -238,8 +300,8 @@ public class Drink : MonoBehaviour
                 img.sprite = GetSpriteForKey(key);
 
                 RectTransform rt = go.GetComponent<RectTransform>();
-                rt.sizeDelta = new Vector2(80, 80);
-                rt.anchoredPosition = new Vector2(80 * i, 0);
+                rt.sizeDelta = new Vector2(60, 60);
+                rt.anchoredPosition = new Vector2(60 * i, 0);
 
                 commandUIObjects.Add(go);
             }

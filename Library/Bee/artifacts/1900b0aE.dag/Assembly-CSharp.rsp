@@ -358,6 +358,7 @@
 "Assets/Scripts/DrinkData.cs"
 "Assets/Scripts/DrinkManager.cs"
 "Assets/Scripts/Timer.cs"
+"Assets/Scripts/Title.cs"
 -langversion:9.0
 
 /deterministic
