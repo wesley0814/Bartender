@@ -411,13 +411,14 @@
 "Assets/Scripts/Characters/CharacterBase.cs"
 "Assets/Scripts/Characters/Enemy.cs"
 "Assets/Scripts/Characters/Guard.cs"
-"Assets/Scripts/CustomerData.cs"
-"Assets/Scripts/CustomerManager.cs"
+"Assets/Scripts/Drink/CustomerData.cs"
+"Assets/Scripts/Drink/CustomerManager.cs"
 "Assets/Scripts/Drink/Drink.cs"
 "Assets/Scripts/Drink/DrinkData.cs"
 "Assets/Scripts/Drink/DrinkManager.cs"
-"Assets/Scripts/Timer.cs"
-"Assets/Scripts/Title.cs"
+"Assets/Scripts/Drink/Timer.cs"
+"Assets/Scripts/Prologue/FadeManager.cs"
+"Assets/Scripts/Title/Title.cs"
 -langversion:9.0
 
 /deterministic

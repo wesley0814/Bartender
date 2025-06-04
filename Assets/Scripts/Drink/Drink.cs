@@ -1,7 +1,10 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using System;
 using UnityEngine;
 using UnityEngine.UI;
+using static Drink;
 
 public class Drink : MonoBehaviour
 {
@@ -21,7 +24,6 @@ public class Drink : MonoBehaviour
     [SerializeField] private Sprite spriteD;
     [SerializeField] private Sprite speechBubbleSprite;
     [SerializeField] private List<GameObject> drinkSelectionList;
-    [SerializeField] private Sprite indicatorSprite;
 
     [Header("Managers")]
     [SerializeField] private DrinkManager drinkManager;
@@ -56,28 +58,30 @@ public class Drink : MonoBehaviour
     private Queue<CustomerQueue> customerQueue = new Queue<CustomerQueue>();
 
     private DrinkData currentDrink;
-    private List<KeyCode> currentInput = new List<KeyCode>();
+    private List<KeyCode> currentInput = new List<KeyCode>();   
     private List<GameObject> commandUIObjects = new List<GameObject>();
-    private List<GameObject> indicators = new List<GameObject>();
+    private List<KeyCode> allowedDrinkKeys = new List<KeyCode>();
+    private GameObject currentCustomerGO;
+    private Color originalCustomerColor = Color.white;
+
     private bool isListening = false;
+    private bool isCustomerWaiting = false;
     private float totalEarnings = 0f;
-
-
-    void Start()
-    {
-        
-    }
 
     void Update()
     {
         if (Input.anyKeyDown)
         {
+            for (var i = 0; i < allowedDrinkKeys.Count; i++)
+            {
+                Console.WriteLine(allowedDrinkKeys[i]);
+            }
             if (!isListening)
             {
-                if (Input.GetKeyDown(KeyCode.W)) SelectDrink(KeyCode.W);
-                if (Input.GetKeyDown(KeyCode.A)) SelectDrink(KeyCode.A);
-                if (Input.GetKeyDown(KeyCode.S)) SelectDrink(KeyCode.S);
-                if (Input.GetKeyDown(KeyCode.D)) SelectDrink(KeyCode.D);
+                CheckKey(KeyCode.W);
+                CheckKey(KeyCode.A);
+                CheckKey(KeyCode.S);
+                CheckKey(KeyCode.D);
             }
             else
             {
@@ -86,9 +90,25 @@ public class Drink : MonoBehaviour
                 if (Input.GetKeyDown(KeyCode.S)) AddInput(KeyCode.S);
                 if (Input.GetKeyDown(KeyCode.D)) AddInput(KeyCode.D);
             }
-            
         }
     }
+
+    private void CheckKey(KeyCode key)
+    {
+        if (Input.GetKeyDown(key))
+        {
+            if (!allowedDrinkKeys.Any() ||  allowedDrinkKeys[0] == key)
+            {
+                SelectDrink(key);
+            }
+            else
+            {
+                Debug.Log($"❌ 이 음료는 손님이 원하지 않습니다! ({key})");
+                HighlightCustomerWarning();
+            }
+        }
+    }
+
 
     public void SelectDrink(KeyCode key)
     {
@@ -122,7 +142,6 @@ public class Drink : MonoBehaviour
             Debug.LogWarning("NULL");
             return;
         }
-
 
         foreach (Transform child in commandSpawnPoint)
         {
@@ -165,6 +184,23 @@ public class Drink : MonoBehaviour
             // Finished
             if (currentInput.Count == currentDrink.sequence.Count)
             {
+                if (isCustomerWaiting)
+                {
+                    Debug.Log("🎯 손님이 원하는 음료를 만들었습니다!");
+
+                    allowedDrinkKeys.RemoveAt(0);
+                    customerQueue.Dequeue();
+                    UpdateCustomerQueueUI();
+                    ResetCommand();
+
+                    if (!allowedDrinkKeys.Any())
+                    {
+                        isCustomerWaiting = false;
+                    }
+
+                    return;
+                }
+
                 DrinkQueue queue = new DrinkQueue(null, currentDrink);
                 drinkQueue.Enqueue(queue);
 
@@ -185,42 +221,6 @@ public class Drink : MonoBehaviour
             ResetCommand();
         }
     }
-
-    /*private void UpdateCommandUI()
-    {
-        foreach (Transform child in commandSpawnPoint)
-        {
-            Destroy(child.gameObject);
-        }
-        commandUIObjects.Clear();
-
-        int remainingCount = currentDrink.sequence.Count - currentInput.Count;
-        for (int i = 0; i < remainingCount; i++)
-        {
-            KeyCode key = currentDrink.sequence[currentInput.Count + i];
-
-            GameObject go = new GameObject("Command_" + key + "_" + i);
-            go.transform.SetParent(commandSpawnPoint, false);
-
-            Image img = go.AddComponent<Image>();
-            img.sprite = GetSpriteForKey(key);
-
-            RectTransform rt = go.GetComponent<RectTransform>();
-            rt.sizeDelta = new Vector2(80, 80);
-            rt.anchoredPosition = new Vector2(80 * i, 0);
-
-            commandUIObjects.Add(go);
-
-            if (i == 0)
-            {
-                img.color = Color.yellow;
-            }
-            else
-            {
-                img.color = Color.white;
-            }
-        }
-    }*/
 
     private void UpdateCommandUI()
     {
@@ -301,20 +301,14 @@ public class Drink : MonoBehaviour
                 Destroy(obj);
         }
         commandUIObjects.Clear();
+
         foreach (Transform child in commandSpawnPoint)
-        {
             Destroy(child.gameObject);
-        }
+
         foreach (Transform child in drinkSpawnPoint)
-        {
             Destroy(child.gameObject);
-        }
     }
 
-    private void Attack()
-    {
-
-    }
 
     private Sprite GetSpriteForKey(KeyCode key)
     {
@@ -337,8 +331,52 @@ public class Drink : MonoBehaviour
         CustomerData randomCustomer = customerManager.GetRandomCustomer();
         CustomerQueue queue = new CustomerQueue(null, randomCustomer);
         customerQueue.Enqueue(queue);
+        isCustomerWaiting = true;
+
+        switch (queue.customerData.order)
+        {
+            case "Americano":
+                allowedDrinkKeys.Add(KeyCode.W);
+                break;
+            case "Lemonade":
+                allowedDrinkKeys.Add(KeyCode.A);
+                break;
+            case "Porridge":
+                allowedDrinkKeys.Add(KeyCode.S);
+                break;
+            case "Wine":
+                allowedDrinkKeys.Add(KeyCode.D);
+                break;
+        }
 
         UpdateCustomerQueueUI();
+
+    }
+
+    private void HighlightCustomerWarning()
+    {
+        if (currentCustomerGO != null)
+        {
+            Image img = currentCustomerGO.GetComponent<Image>();
+            if (img != null)
+            {
+                img.color = Color.red;
+                CancelInvoke(nameof(ResetCustomerHighlight));
+                Invoke(nameof(ResetCustomerHighlight), 0.5f);
+            }
+        }
+    }
+
+    private void ResetCustomerHighlight()
+    {
+        if (currentCustomerGO != null)
+        {
+            Image img = currentCustomerGO.GetComponent<Image>();
+            if (img != null)
+            {
+                img.color = originalCustomerColor;
+            }
+        }
     }
 
     private void UpdateCustomerQueueUI()
@@ -389,6 +427,7 @@ public class Drink : MonoBehaviour
 
             index++;
         }
+
     }
 
 }
