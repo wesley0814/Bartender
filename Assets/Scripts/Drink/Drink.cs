@@ -13,9 +13,14 @@ public class Drink : MonoBehaviour
     [SerializeField] private Transform drinkSpawnPoint;
     [SerializeField] private Transform customerQueueSpawnPoint;
     [SerializeField] private Transform drinkQueueSpawnPoint;
+    [SerializeField] private Transform skillCheckPoint;
+    [SerializeField] private Transform wDrinkIndicatorPoint;
+    [SerializeField] private Transform aDrinkIndicatorPoint;
+    [SerializeField] private Transform sDrinkIndicatorPoint;
+    [SerializeField] private Transform dDrinkIndicatorPoint;
 
     [Header("UI Text")]
-    [SerializeField] private Text earningsText;
+    [SerializeField] private Text countdownText;
 
     [Header("UI Sprites")]
     [SerializeField] private Sprite spriteW;
@@ -24,13 +29,19 @@ public class Drink : MonoBehaviour
     [SerializeField] private Sprite spriteD;
     [SerializeField] private Sprite speechBubbleSprite;
     [SerializeField] private List<GameObject> drinkSelectionList;
+    [SerializeField] private GameObject skillCheckPrefab;
+    [SerializeField] private GameObject wIndicatorPrefab;
+    [SerializeField] private GameObject aIndicatorPrefab;
+    [SerializeField] private GameObject sIndicatorPrefab;
+    [SerializeField] private GameObject dIndicatorPrefab;
+    [SerializeField] private GameObject countdownUI;
+
 
     [Header("Managers")]
     [SerializeField] private DrinkManager drinkManager;
     [SerializeField] private CustomerManager customerManager;
     [SerializeField] private BattleManager battleManager;
 
-    // Make drink and put in queue
     public class DrinkQueue
     {
         public GameObject drinkObject;
@@ -42,7 +53,6 @@ public class Drink : MonoBehaviour
             drinkData = data;
         }
     }
-    // Make customer and put in queue
     public class CustomerQueue
     {
         public GameObject customerObject;
@@ -54,77 +64,182 @@ public class Drink : MonoBehaviour
             customerData = data;
         }
     }
+    private List<DrinkQueue> drinkBehaviorList;
     private Queue<DrinkQueue> drinkQueue = new Queue<DrinkQueue>();
     private Queue<CustomerQueue> customerQueue = new Queue<CustomerQueue>();
 
     private DrinkData currentDrink;
-    private List<KeyCode> currentInput = new List<KeyCode>();   
-    private List<GameObject> commandUIObjects = new List<GameObject>();
+    private List<KeyCode> currentInput = new List<KeyCode>();
     private List<KeyCode> allowedDrinkKeys = new List<KeyCode>();
+    private List<GameObject> commandUIObjects = new List<GameObject>();
+    private List<GameObject> activeIndicators = new List<GameObject>();
     private GameObject currentCustomerGO;
     private Color originalCustomerColor = Color.white;
+    private KeyCode firstKey;
 
+    public float prepareTime = 3f;
     private bool isListening = false;
     private bool isCustomerWaiting = false;
-    private float totalEarnings = 0f;
+
+    void Start()
+    {
+        StartCoroutine(PrepareAndStartGame());
+        StartCoroutine(CustomerSpawnRoutine());
+    }
 
     void Update()
     {
         if (Input.anyKeyDown)
         {
-            for (var i = 0; i < allowedDrinkKeys.Count; i++)
+            if (Input.anyKeyDown)
             {
-                Console.WriteLine(allowedDrinkKeys[i]);
-            }
-            if (!isListening)
-            {
-                CheckKey(KeyCode.W);
-                CheckKey(KeyCode.A);
-                CheckKey(KeyCode.S);
-                CheckKey(KeyCode.D);
-            }
-            else
-            {
-                if (Input.GetKeyDown(KeyCode.W)) AddInput(KeyCode.W);
-                if (Input.GetKeyDown(KeyCode.A)) AddInput(KeyCode.A);
-                if (Input.GetKeyDown(KeyCode.S)) AddInput(KeyCode.S);
-                if (Input.GetKeyDown(KeyCode.D)) AddInput(KeyCode.D);
+                if (!isListening)
+                {
+                    if (currentInput.Count >= 1 && Input.GetKeyDown(KeyCode.S))
+                    {
+                        currentInput.Clear();
+                        ClearIndicators();
+                        return;
+                    }
+                    if (Input.GetKeyDown(KeyCode.W)) { currentInput.Add(KeyCode.W); AddKeyIndicator(KeyCode.W); }
+                    if (Input.GetKeyDown(KeyCode.A)) { currentInput.Add(KeyCode.A); AddKeyIndicator(KeyCode.A); }
+                    if (Input.GetKeyDown(KeyCode.S)) { currentInput.Add(KeyCode.S); AddKeyIndicator(KeyCode.S); }
+                    if (Input.GetKeyDown(KeyCode.D)) { currentInput.Add(KeyCode.D); AddKeyIndicator(KeyCode.D); }
+
+                    var foundDrink = drinkManager.FindDrinkByKeys(currentInput);
+                    Debug.Log("🔸 현재 입력: " + string.Join(", ", currentInput));
+                    if (isCustomerWaiting)
+                    {
+                        if(currentInput.Count >= 2)
+                        {
+                            if (IsAllowedDrink(foundDrink))
+                            {
+                                Debug.Log($"✅ 음료 선택됨: {foundDrink.drinkName}");
+                                StartListening(foundDrink.drinkName);
+                                currentInput.Clear();
+                                ClearIndicators();
+                            }
+                            else if (!IsAllowedDrink(foundDrink))
+                            {
+                                HighlightCustomerWarning();
+                                Debug.Log($"이 음료를 원하지 않습니다.{foundDrink.drinkName}");
+                                currentInput.Clear();
+                                ClearIndicators();
+                            }
+                            currentInput.Clear();
+                            ClearIndicators();
+                        }
+                    }
+                    else
+                    {
+                        if (foundDrink != null)
+                        {
+                            Debug.Log($"✅ 음료 선택됨: {foundDrink.drinkName}");
+                            StartListening(foundDrink.drinkName);
+                            currentInput.Clear();
+                            ClearIndicators();
+                        }
+                        else if (currentInput.Count >= 2)
+                        {
+                            Debug.Log("🔸 현재 입력: " + string.Join(", ", currentInput));
+                            Debug.Log("❌ 유효하지 않은 조합입니다.");
+                            currentInput.Clear();
+                            ClearIndicators();
+                        }
+                    }
+                }
+                else
+                {
+                    if (Input.GetKeyDown(KeyCode.W)) AddInput(KeyCode.W);
+                    if (Input.GetKeyDown(KeyCode.A)) AddInput(KeyCode.A);
+                    if (Input.GetKeyDown(KeyCode.S)) AddInput(KeyCode.S);
+                    if (Input.GetKeyDown(KeyCode.D)) AddInput(KeyCode.D);
+                }
             }
         }
     }
 
-    private void CheckKey(KeyCode key)
+    private IEnumerator PrepareAndStartGame()
     {
-        if (Input.GetKeyDown(key))
-        {
-            if (!allowedDrinkKeys.Any() ||  allowedDrinkKeys[0] == key)
-            {
-                SelectDrink(key);
-            }
-            else
-            {
-                Debug.Log($"❌ 이 음료는 손님이 원하지 않습니다! ({key})");
-                HighlightCustomerWarning();
-            }
-        }
+        Time.timeScale = 0f;
+        countdownUI.SetActive(true);
+
+        countdownText.text = "3";
+        yield return new WaitForSecondsRealtime(1f);
+        countdownText.text = "2";
+        yield return new WaitForSecondsRealtime(1f);
+        countdownText.text = "1";
+        yield return new WaitForSecondsRealtime(1f);
+        countdownText.text = "Start!";
+        yield return new WaitForSecondsRealtime(1f);
+
+        countdownUI.SetActive(false);
+        Time.timeScale = 1f;
     }
 
+    private bool IsAllowedDrink(DrinkData drink)
+    {
+        for (int i = 0; i < 2; i++)
+        {
+            if (drink.selectKey[i] != allowedDrinkKeys[i])
+                return false;
+        }
+
+        return true;
+    }
+
+    private void AddKeyIndicator(KeyCode key)
+    {
+        GameObject indicator;
+        switch (key)
+        {
+            case KeyCode.W:
+                indicator = Instantiate(wIndicatorPrefab, wDrinkIndicatorPoint);
+                break;
+            case KeyCode.A:
+                indicator = Instantiate(aIndicatorPrefab, aDrinkIndicatorPoint);
+                break;
+            case KeyCode.S:
+                indicator = Instantiate(sIndicatorPrefab, sDrinkIndicatorPoint);
+                break;
+            case KeyCode.D:
+                indicator = Instantiate(dIndicatorPrefab, dDrinkIndicatorPoint);
+                break;
+            default: return;
+        }
+        var text = indicator.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+        if (text != null)
+        {
+            text.text = key.ToString();
+        }
+        activeIndicators.Add(indicator);
+    }
+
+
+    private void ClearIndicators()
+    {
+        foreach (var indicator in activeIndicators)
+        {
+            Destroy(indicator);
+        }
+        activeIndicators.Clear();
+    }
 
     public void SelectDrink(KeyCode key)
     {
         switch (key)
         {
             case KeyCode.W: 
-                StartListening("Americano"); 
+                StartListening("Screwdriver"); 
                 break;
             case KeyCode.A:
-                StartListening("Lemonade");
+                StartListening("Gin & Tonic");
                 break;
             case KeyCode.S:
-                StartListening("Porridge");
+                StartListening("Margarita");
                 break;
             case KeyCode.D:
-                StartListening("Wine");
+                StartListening("Manhattan");
                 break;
         }
     }
@@ -151,16 +266,14 @@ public class Drink : MonoBehaviour
         UpdateCommandUI();
 
         // Print 'drink' image
-        if (currentDrink.drinkSprite != null)
+        if (currentDrink.drinkPrefab != null)
         {
-            GameObject drinkGO = new GameObject("DrinkSprite");
-            drinkGO.transform.SetParent(drinkSpawnPoint, false);
-
-            Image img = drinkGO.AddComponent<Image>();
-            img.sprite = currentDrink.drinkSprite;
-
-            RectTransform rt = img.GetComponent<RectTransform>();
-            rt.anchoredPosition = Vector2.zero;
+            GameObject drinkGO = Instantiate(currentDrink.drinkPrefab, drinkSpawnPoint);
+            RectTransform rt = drinkGO.GetComponent<RectTransform>();
+            if (rt != null)
+            {
+                rt.anchoredPosition = Vector2.zero;
+            }
         }
 
     }
@@ -188,7 +301,7 @@ public class Drink : MonoBehaviour
                 {
                     Debug.Log("🎯 손님이 원하는 음료를 만들었습니다!");
 
-                    allowedDrinkKeys.RemoveAt(0);
+                    allowedDrinkKeys.Clear();
                     customerQueue.Dequeue();
                     UpdateCustomerQueueUI();
                     ResetCommand();
@@ -209,9 +322,9 @@ public class Drink : MonoBehaviour
 
                 if (drinkQueue.Count == 3)
                 {
-                    List<DrinkQueue> drinkList = new List<DrinkQueue>(drinkQueue);
+                    drinkBehaviorList = new List<DrinkQueue>(drinkQueue);
+                    StartCoroutine(SkillCheckCoroutine());
                     drinkQueue.Clear();
-                    battleManager.DrinkBehavior(drinkList);
                 }
             }
         }
@@ -274,18 +387,18 @@ public class Drink : MonoBehaviour
         int index = 0;
         foreach (DrinkQueue queue in drinkQueue)
         {
-            GameObject drinkGO = new GameObject("Drink_" + queue.drinkData.drinkName);
-            drinkGO.transform.SetParent(drinkQueueSpawnPoint, false);
+            if (queue.drinkData.drinkPrefab != null)
+            {
+                GameObject drinkGO = Instantiate(queue.drinkData.drinkPrefab, drinkQueueSpawnPoint);
+                RectTransform rt = drinkGO.GetComponent<RectTransform>();
+                if (rt != null)
+                {
+                    rt.anchoredPosition = new Vector2(index * 60f, 0);
+                }
 
-            Image img = drinkGO.AddComponent<Image>();
-            img.sprite = queue.drinkData.drinkSprite;
-
-            RectTransform rt = drinkGO.GetComponent<RectTransform>();
-            rt.sizeDelta = new Vector2(50, 50);
-            rt.anchoredPosition = new Vector2(index * 80f, 0);
-
-            queue.drinkObject = drinkGO;
-            index++;
+                queue.drinkObject = drinkGO;
+                index++;
+            }
         }
     }
 
@@ -321,10 +434,6 @@ public class Drink : MonoBehaviour
             default: return null;
         }
     }
-    private void UpdateEarningsUI()
-    {
-        earningsText.text = $"💰 {Mathf.FloorToInt(totalEarnings)} $";
-    }
 
     public void SpawnCustomer()
     {
@@ -333,51 +442,137 @@ public class Drink : MonoBehaviour
         customerQueue.Enqueue(queue);
         isCustomerWaiting = true;
 
-        switch (queue.customerData.order)
+        DrinkData drink = drinkManager.GetDrinkByName(queue.customerData.order);
+
+        for (int i = 0; i < drink.selectKey.Count; i++)
         {
-            case "Americano":
-                allowedDrinkKeys.Add(KeyCode.W);
-                break;
-            case "Lemonade":
-                allowedDrinkKeys.Add(KeyCode.A);
-                break;
-            case "Porridge":
-                allowedDrinkKeys.Add(KeyCode.S);
-                break;
-            case "Wine":
-                allowedDrinkKeys.Add(KeyCode.D);
-                break;
+            allowedDrinkKeys.Add(drink.selectKey[i]);
         }
 
         UpdateCustomerQueueUI();
 
     }
 
+    IEnumerator CustomerSpawnRoutine()
+    {
+        yield return new WaitForSeconds(20f);
+
+        while (true)
+        {
+            while (isListening)
+            {
+                yield return null;
+            }
+
+            SpawnCustomer();
+
+            yield return new WaitForSeconds(20f);
+        }
+    }
+
+
+    private IEnumerator SkillCheckCoroutine()
+    {
+        bool isSuccess = false;
+
+        while (!isSuccess)
+        {
+            GameObject barGO = Instantiate(skillCheckPrefab, skillCheckPoint);
+            RectTransform barRT = barGO.GetComponent<RectTransform>();
+            barRT.anchoredPosition = Vector2.zero;
+
+            RectTransform checkBarRT = barGO.transform.Find("Check Bar").GetComponent<RectTransform>();
+            RectTransform successZoneRT = barGO.transform.Find("Success Zone").GetComponent<RectTransform>();
+            RectTransform barArea = barGO.GetComponent<RectTransform>();
+
+            float barWidth = barArea.rect.width;
+            float handleWidth = checkBarRT.rect.width;
+
+            float speed = 200f;
+            float direction = 1f;
+            bool keyPressed = false;
+
+            while (!keyPressed)
+            {
+                float deltaX = direction * speed * Time.deltaTime;
+                float nextX = checkBarRT.anchoredPosition.x + deltaX;
+
+                float leftBound = -barWidth / 2f + handleWidth / 2f;
+                float rightBound = barWidth / 2f - handleWidth / 2f;
+
+                if (nextX > rightBound)
+                {
+                    nextX = rightBound;
+                    direction = -1f;
+                }
+                else if (nextX < leftBound)
+                {
+                    nextX = leftBound;
+                    direction = 1f;
+                }
+
+                checkBarRT.anchoredPosition = new Vector2(nextX, checkBarRT.anchoredPosition.y);
+
+                if (Input.GetKeyDown(KeyCode.Space))
+                {
+                    keyPressed = true;
+
+                    float handleLeft = checkBarRT.anchoredPosition.x - handleWidth / 2f;
+                    float handleRight = checkBarRT.anchoredPosition.x + handleWidth / 2f;
+
+                    float zoneLeft = successZoneRT.anchoredPosition.x - successZoneRT.rect.width / 2f;
+                    float zoneRight = successZoneRT.anchoredPosition.x + successZoneRT.rect.width / 2f;
+
+                    if (handleLeft >= zoneLeft && handleRight <= zoneRight)
+                    {
+                        battleManager.DrinkBehavior(drinkBehaviorList);
+                        UpdateDrinkQueueUI();
+                        isSuccess = true;
+                    }
+                    else
+                    {
+                        Debug.Log("❌ 실패! 다시 시도합니다...");
+                    }
+                }
+
+                yield return null;
+            }
+
+            Destroy(barGO);
+            yield return new WaitForSeconds(0.2f); // 약간의 딜레이 후 재시도
+        }
+    }
+
+
     private void HighlightCustomerWarning()
     {
         if (currentCustomerGO != null)
         {
-            Image img = currentCustomerGO.GetComponent<Image>();
-            if (img != null)
-            {
-                img.color = Color.red;
-                CancelInvoke(nameof(ResetCustomerHighlight));
-                Invoke(nameof(ResetCustomerHighlight), 0.5f);
-            }
+            StartCoroutine(ShakeCustomer(currentCustomerGO.transform));
         }
     }
 
-    private void ResetCustomerHighlight()
+    private IEnumerator ShakeCustomer(Transform target)
     {
-        if (currentCustomerGO != null)
+        Vector3 originalPos = target.localPosition;
+
+        float shakeDuration = 0.5f;
+        float shakeMagnitude = 5f;
+        float shakeSpeed = 40f;
+        float elapsed = 0f;
+
+        while (elapsed < shakeDuration)
         {
-            Image img = currentCustomerGO.GetComponent<Image>();
-            if (img != null)
-            {
-                img.color = originalCustomerColor;
-            }
+            float xOffset = Mathf.Sin(elapsed * shakeSpeed) * shakeMagnitude;
+            target.localPosition = originalPos + new Vector3(xOffset, 0f, 0f);
+
+            elapsed += Time.deltaTime;
+            yield return null;
         }
+
+        target.localPosition = originalPos;
     }
+
 
     private void UpdateCustomerQueueUI()
     {
@@ -401,8 +596,13 @@ public class Drink : MonoBehaviour
 
             queue.customerObject = customerGO;
 
+            if (index == 0)
+            {
+                currentCustomerGO = customerGO;
+            }
+
             DrinkData orderedDrink = drinkManager.GetDrinkByName(queue.customerData.order);
-            if (orderedDrink != null && orderedDrink.drinkSprite != null && speechBubbleSprite != null)
+            if (orderedDrink != null && orderedDrink.drinkPrefab != null && speechBubbleSprite != null)
             {
                 GameObject bubbleGO = new GameObject("SpeechBubble");
                 bubbleGO.transform.SetParent(customerGO.transform, false);
@@ -411,20 +611,16 @@ public class Drink : MonoBehaviour
                 bubbleImg.sprite = speechBubbleSprite;
 
                 RectTransform bubbleRT = bubbleGO.GetComponent<RectTransform>();
-                bubbleRT.sizeDelta = new Vector2(80, 80);
+                bubbleRT.sizeDelta = new Vector2(85, 85);
                 bubbleRT.anchoredPosition = new Vector2(0, 70);
 
-                GameObject drinkIcon = new GameObject("DrinkOrderIcon");
-                drinkIcon.transform.SetParent(bubbleGO.transform, false);
-
-                Image drinkImg = drinkIcon.AddComponent<Image>();
-                drinkImg.sprite = orderedDrink.drinkSprite;
-
+                GameObject drinkIcon = Instantiate(orderedDrink.drinkPrefab, bubbleGO.transform);
                 RectTransform drinkRT = drinkIcon.GetComponent<RectTransform>();
-                drinkRT.sizeDelta = new Vector2(30, 30);
-                drinkRT.anchoredPosition = Vector2.zero;
+                if (drinkRT != null)
+                {
+                    drinkRT.anchoredPosition = Vector2.zero;
+                }
             }
-
             index++;
         }
 

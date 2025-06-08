@@ -6,15 +6,17 @@ using UnityEngine;
 public class DrinkData
 {
     public string drinkName;
-    public Sprite drinkSprite;
+    public GameObject drinkPrefab;
     public List<KeyCode> sequence;
+    public List<KeyCode> selectKey;
     public int drinkPrice;
 
-    public DrinkData(string name, Sprite sprite, List<KeyCode> keys, int price)
+    public DrinkData(string name, GameObject prefab, List<KeyCode> keys, List<KeyCode> select, int price)
     {
         drinkName = name;
-        drinkSprite = sprite;
+        drinkPrefab = prefab;
         sequence = keys;
+        selectKey = select;
         drinkPrice = price;
     }
 }
